@@ -34,11 +34,11 @@ def split_data(data):
     test = data[ (rnd >= 0.8)]
 
 
-    if os.path.exists('train_data.csv') & os.path.exists('test_data.csv') == False:
-        train.to_csv('train_data.csv', header=False, index=False)
-        test.to_csv('test_data.csv', header=False, index=False)
-        print('Created data files')
-    print('Files already exist->Splitting...')
+    #if os.path.exists('train_data.csv') & os.path.exists('test_data.csv') == False:
+    train.to_csv('train_data.csv', header=False, index=False)
+    test.to_csv('test_data.csv', header=False, index=False)
+    print('Created data files')
+    #print('Files already exist->Splitting...')
     print(len(data), len(train), len(test))    
 
 # Use tensorflow to read and decode data
@@ -55,14 +55,24 @@ def decode_csv(csv_row):
   img = read_and_decode(filename)
   return img, label_string
 
+def _decode_csv(csv_row):
+    record_defaults = ["path", "class"]
+    try:
+        filename, label_string = tf.io.decode_csv(csv_row, record_defaults)
+        img = read_and_decode(filename)
+        label = tf.argmax(tf.math.equal(["0","1"], label_string))
+    except:
+        print('File corrupted')
+    return img, label
+
 
 def generate_data(train_filename, test_filename):
     train_dataset = (tf.data.TextLineDataset(
         train_filename).
-        map(decode_csv))
+        map(_decode_csv)).batch(32)
     test_dataset = (tf.data.TextLineDataset(
         test_filename).
-        map(decode_csv))
+        map(_decode_csv)).batch(32)
     
     return train_dataset, test_dataset
 
@@ -71,17 +81,16 @@ def sanity_check(dataset):
         avg = tf.math.reduce_mean(img, axis=[0, 1]) # average pixel in the image
         print(label, avg)
 
+train, test = generate_data('train_data.csv', 'test_data.csv')
+
 if __name__ == "__main__":
     print('Starting data preparation...')
     data_to_split = clean_data(data)
     split_data(data_to_split)
     print('Now reading files on main...')
     train, test = generate_data('train_data.csv', 'test_data.csv')
+    print(train, test)
     print('Data generated...')
-    print('Train data check...')
-    sanity_check(train)
-    print('Test data check...')
-    sanity_check(test)
     print('Data preparation ran succesfully!')
 
 
